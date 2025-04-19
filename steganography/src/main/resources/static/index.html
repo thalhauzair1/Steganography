@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Steganography Tool</title>
+    <style>
+        :root {
+            --bg-dark: #1f1f1f;
+            --card-dark: #2b2b2b;
+            --text-dark: #f4f4f4;
+            --accent: #007bff;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-dark);
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+            background: var(--card-dark);
+            padding: 2rem;
+            margin: 1.5rem auto;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+
+        textarea {
+            width: 100%;
+            padding: 0.6rem;
+            border: 1px solid #444;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            font-size: 1rem;
+            background: #1a1a1a;
+            color: var(--text-dark);
+        }
+
+        .file-label {
+            display: inline-block;
+            background: #444;
+            color: #f4f4f4;
+            padding: 0.7rem 1.2rem;
+            font-size: 1rem;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-bottom: 0.5rem;
+            text-align: center;
+            transition: background 0.3s;
+        }
+
+        .file-label:hover {
+            background: #555;
+        }
+
+        .file-label input[type="file"] {
+            display: none;
+        }
+
+        #fileName1, #fileName2 {
+            margin-bottom: 1.5rem;
+            font-size: 0.95rem;
+            color: #aaa;
+        }
+
+        button {
+            background: var(--accent);
+            color: white;
+            padding: 0.8rem 1.2rem;
+            font-size: 1rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        button:hover {
+            background: #0056b3;
+        }
+
+        .result img {
+            margin-top: 1rem;
+            max-width: 100%;
+            border-radius: 8px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .result a {
+            display: inline-block;
+            margin-top: 1rem;
+            text-decoration: none;
+            background: #28a745;
+            color: white;
+            padding: 0.6rem 1rem;
+            border-radius: 6px;
+            transition: background 0.3s;
+        }
+
+        .result a:hover {
+            background: #218838;
+        }
+
+        .alert {
+            padding: 1rem;
+            border-radius: 8px;
+            margin-top: 1rem;
+            font-weight: bold;
+            display: none;
+        }
+
+        .alert.success {
+            background-color: #2e4d2e;
+            color: #a7f3a7;
+        }
+
+        .alert.loading {
+            background-color: #4d4d1f;
+            color: #fff8a7;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🔐 Steganography Encoder</h1>
+    <form id="encodeForm" enctype="multipart/form-data" method="post">
+        <label class="file-label">
+            📁 Select Image (PNG)
+            <input type="file" name="image" accept="image/png" required />
+        </label>
+        <div id="fileName1"></div>
+
+        <label>Enter Message to Hide:</label>
+        <textarea name="message" rows="5" required></textarea>
+
+        <button type="submit">Hide Message</button>
+    </form>
+
+    <div class="alert loading" id="encodeLoading">🔄 Encoding in progress...</div>
+    <div class="alert success" id="encodeSuccess">✅ Message successfully embedded!</div>
+
+    <div id="encodedResult" class="result"></div>
+</div>
+
+<div class="container">
+    <h1>🔍 Steganography Decoder</h1>
+    <form id="decodeForm" enctype="multipart/form-data" method="post">
+        <label class="file-label">
+            📁 Select Stego Image (PNG)
+            <input type="file" name="image" accept="image/png" required />
+        </label>
+        <div id="fileName2"></div>
+
+        <button type="submit">Decode Message</button>
+    </form>
+
+    <div class="alert loading" id="decodeLoading">🔍 Decoding...</div>
+    <div id="decodedMessage" class="alert success"></div>
+</div>
+
+<script>
+    // Update filename displays
+    document.querySelectorAll('input[type="file"]').forEach(input => {
+        input.addEventListener('change', function () {
+            const fileName = this.files[0]?.name || 'No file selected';
+            const displayId = this.closest('form').id === 'encodeForm' ? 'fileName1' : 'fileName2';
+            document.getElementById(displayId).textContent = `Selected: ${fileName}`;
+        });
+    });
+
+    // Handle Encode
+    document.getElementById('encodeForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+        const formData = new FormData(this);
+
+        document.getElementById('encodeLoading').style.display = 'block';
+        document.getElementById('encodeSuccess').style.display = 'none';
+
+        try {
+            const response = await fetch('/encode', {
+                method: 'POST',
+                body: formData
+            });
+
+            document.getElementById('encodeLoading').style.display = 'none';
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                alert('Encoding failed: ' + errorText);
+                return;
+            }
+
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+
+            document.getElementById('encodeSuccess').style.display = 'block';
+            document.getElementById('encodedResult').innerHTML = `
+          <h3>Stego Image</h3>
+          <img src="${url}" alt="Stego Output"/>
+          <br>
+          <a href="${url}" download="stego.png">Download Image</a>
+        `;
+        } catch (err) {
+            document.getElementById('encodeLoading').style.display = 'none';
+            alert("Encoding failed: " + err.message);
+        }
+    });
+
+    // Handle Decode
+    document.getElementById('decodeForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+        const formData = new FormData(this);
+
+        document.getElementById('decodeLoading').style.display = 'block';
+        document.getElementById('decodedMessage').style.display = 'none';
+
+        try {
+            const response = await fetch('/decode', {
+                method: 'POST',
+                body: formData
+            });
+
+            const text = await response.text();
+            document.getElementById('decodeLoading').style.display = 'none';
+            document.getElementById('decodedMessage').style.display = 'block';
+            document.getElementById('decodedMessage').innerHTML = `
+          <h3>Decoded Message</h3>
+          <p>${text}</p>
+        `;
+        } catch (err) {
+            document.getElementById('decodeLoading').style.display = 'none';
+            alert("Decoding failed: " + err.message);
+        }
+    });
+</script>
+</body>
+</html>
